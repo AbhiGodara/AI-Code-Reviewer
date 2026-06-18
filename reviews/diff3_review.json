@@ -1,0 +1,136 @@
+{
+  "review_id": "0f62f0e9-f8cf-42f3-851f-6840eee4b0aa",
+  "pr_summary": "This PR adds order cancellation and status polling functionality to the order service, including bulk cancellation and discount calculation.",
+  "verdict": "request_changes",
+  "verdict_reason": "The PR is given a request_changes verdict due to critical findings related to performance, security, and correctness issues that need to be addressed.",
+  "overall_severity": "critical",
+  "findings": [
+    {
+      "id": "F-001",
+      "line": 14,
+      "line_content": "    const order = await orderRepo.findById(orderId);",
+      "category": "performance",
+      "severity": "critical",
+      "title": "N+1 query",
+      "description": "Inside the loop, a database query is executed for each iteration, leading to a high number of database calls. This can cause performance issues and slow down the application.",
+      "suggestion": "Use a single database query to fetch all orders, then loop through the results. Alternatively, use a batch update to update the status of multiple orders at once."
+    },
+    {
+      "id": "F-002",
+      "line": 3,
+      "line_content": "export async function cancelOrder(orderId: string, userId: string): Promise<void> {",
+      "category": "security",
+      "severity": "high",
+      "title": "Missing Auth",
+      "description": "The function cancelOrder does not verify if the userId matches the order's userId, allowing unauthorized users to cancel orders.",
+      "suggestion": "Add a check to ensure the userId matches the order's userId, e.g., if (order.userId !== userId) { throw new Error('Unauthorized'); }"
+    },
+    {
+      "id": "F-003",
+      "line": 4,
+      "line_content": "  const order = await orderRepo.findById(orderId);",
+      "category": "correctness",
+      "severity": "high",
+      "title": "Potential null-deref crash on order not found",
+      "description": "If the order is not found, `order` will be null, causing a crash when trying to access `order.status` and `order.cancelledAt`.",
+      "suggestion": "Add a null check before accessing `order` properties: `if (order) { ... }`"
+    },
+    {
+      "id": "F-004",
+      "line": 11,
+      "line_content": "export async function pollOrderStatus(orderId: string): Promise<string> {",
+      "category": "security",
+      "severity": "high",
+      "title": "Missing Auth",
+      "description": "The function pollOrderStatus does not verify if the caller is authorized to access the order status, allowing unauthorized users to access order information.",
+      "suggestion": "Add a check to ensure the caller is authorized to access the order, e.g., const order = await orderRepo.findById(orderId); if (order.userId !== userId) { throw new Error('Unauthorized'); }"
+    },
+    {
+      "id": "F-005",
+      "line": 14,
+      "line_content": "    const order = await orderRepo.findById(orderId);",
+      "category": "correctness",
+      "severity": "high",
+      "title": "Potential null-deref crash on order not found",
+      "description": "If the order is not found, `order` will be null, causing a crash when trying to access `order.status`.",
+      "suggestion": "Add a null check before accessing `order` properties: `if (order) { ... }`"
+    },
+    {
+      "id": "F-006",
+      "line": 21,
+      "line_content": "export async function bulkCancelOrders(orderIds: string[]): Promise<void> {",
+      "category": "security",
+      "severity": "high",
+      "title": "Missing Auth",
+      "description": "The function bulkCancelOrders does not verify if the caller is authorized to cancel the orders, allowing unauthorized users to cancel orders.",
+      "suggestion": "Add a check to ensure the caller is authorized to cancel the orders, e.g., for (const id of orderIds) { const order = await orderRepo.findById(id); if (order.userId !== userId) { throw new Error('Unauthorized'); } }"
+    },
+    {
+      "id": "F-007",
+      "line": 23,
+      "line_content": "    await cancelOrder(id, 'system');",
+      "category": "security",
+      "severity": "high",
+      "title": "Hardcoded User ID",
+      "description": "The function bulkCancelOrders uses a hardcoded 'system' userId, which could be a security risk if the 'system' userId is not properly secured.",
+      "suggestion": "Use a secure and authorized userId instead of 'system', e.g., const authorizedUserId = await getAuthorizedUserId(); await cancelOrder(id, authorizedUserId);"
+    },
+    {
+      "id": "F-008",
+      "line": 23,
+      "line_content": "    await cancelOrder(id, 'system');",
+      "category": "test_coverage",
+      "severity": "medium",
+      "title": "Missing test for bulk cancellation of already-cancelled orders",
+      "description": "If an order is already cancelled, the `cancelOrder` function will not throw an error. This should be tested to ensure the correct behavior.",
+      "suggestion": "Add a test case with an already-cancelled order, e.g. `it('should not throw an error for already-cancelled order', async () => { await bulkCancelOrders(['already-cancelled-order-id']); });`"
+    },
+    {
+      "id": "F-009",
+      "line": 28,
+      "line_content": "  const discounts: any = { SAVE10: 0.1, SAVE20: 0.2, SAVE50: 0.5 };",
+      "category": "test_coverage",
+      "severity": "medium",
+      "title": "Missing test for invalid discount code",
+      "description": "If an invalid discount code is passed, the function will return NaN. This should be tested to ensure the correct behavior.",
+      "suggestion": "Add a test case with an invalid discount code, e.g. `it('should return NaN for invalid discount code', async () => { expect(calculateDiscount(100, 'INVALID')).toBeNaN(); });`"
+    },
+    {
+      "id": "F-010",
+      "line": 29,
+      "line_content": "  return price * (1 - discounts[discountCode]);",
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Potential type-safety hole: discountCode not checked",
+      "description": "If `discountCode` is not a valid key in the `discounts` object, `discounts[discountCode]` will be undefined, causing a NaN result.",
+      "suggestion": "Add a null check and a default value for `discounts[discountCode]`: `return price * (1 - (discounts[discountCode] || 0));`"
+    },
+    {
+      "id": "F-011",
+      "line": 28,
+      "line_content": "  const discounts: any = { SAVE10: 0.1, SAVE20: 0.2, SAVE50: 0.5 };",
+      "category": "style",
+      "severity": "low",
+      "title": "Overly broad type for discounts object",
+      "description": "The 'any' type can lead to type-safety issues if the discounts object is modified or extended in the future.",
+      "suggestion": "const discounts: { [code: string]: number } = { SAVE10: 0.1, SAVE20: 0.2, SAVE50: 0.5 };"
+    }
+  ],
+  "positive_observations": [
+    "The PR adds useful functionality for order cancellation and status polling",
+    "The code is well-structured and easy to follow, with clear function names and comments"
+  ],
+  "missing_tests": [
+    "Test case for bulk cancellation of already-cancelled orders",
+    "Test case for unauthorized access to order status and cancellation"
+  ],
+  "agent_findings_count": {
+    "security": 4,
+    "performance": 1,
+    "correctness": 3,
+    "style": 1,
+    "test_coverage": 2
+  },
+  "processing_time_ms": 71831,
+  "created_at": "2026-06-18T11:21:43.580617Z"
+}
