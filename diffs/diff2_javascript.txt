@@ -1,0 +1,38 @@
+--- a/userController.js
++++ b/userController.js
+@@ -1,5 +1,30 @@
++// userController.js - PR: Add bulk fetch and fix password reset
++
++async function getUsers(req, res) {
++  const { ids } = req.query;
++  const userIds = ids.split(',');
++  const users = [];
++  for (const id of userIds) {
++    const user = await db.query('SELECT * FROM users WHERE id = ?', [id]);
++    users.push(user[0]);
++  }
++  res.json(users);
++}
++
++async function resetPassword(req, res) {
++  const { email, newPassword } = req.body;
++  const user = await db.query('SELECT * FROM users WHERE email = ?', [email]);
++  if (user.length > 0) {
++    await db.query('UPDATE users SET password = ? WHERE email = ?',
++      [newPassword, email]);
++    res.json({ message: 'Password updated' });
++  } else {
++    res.status(404).json({ error: 'User not found' });
++  }
++}
++
++async function getUserActivity(req, res) {
++  const userId = req.params.id;
++  const logs = await db.query(
++    'SELECT * FROM activity_logs WHERE user_id = ?', [userId]
++  );
++  const enriched = logs.map(log => {
++    return { ...log, user: users[log.user_id] };
++  });
++  res.json(enriched);
++}

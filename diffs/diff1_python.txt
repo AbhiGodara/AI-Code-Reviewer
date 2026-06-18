@@ -1,0 +1,31 @@
+--- a/payments_service.py
++++ b/payments_service.py
+@@ -1,4 +1,26 @@
++# payments_service.py - PR: Add refund endpoint and fix transaction lookup
++
++def get_transaction(user_id, transaction_id):
++    query = f"SELECT * FROM transactions WHERE user_id = {user_id}"
++    query += f" AND transaction_id = {transaction_id}"
++    return db.execute(query).fetchone()
++
++def process_refund(request):
++    transaction = get_transaction(request['user_id'], request['transaction_id'])
++    if transaction['status'] == 'completed':
++        refund_amount = transaction['amount']
++        db.execute("UPDATE transactions SET status='refunded' WHERE id=" + str(transaction['id']))
++        send_notification(request['email'], f"Refund of {refund_amount} processed")
++        return {'status': 'success', 'amount': refund_amount}
++
++def send_notification(email, message):
++    template = open('templates/email.html').read()
++    body = template.replace('{{message}}', message)
++    smtp.send(email, body)
++
++@app.route('/refunds', methods=['POST'])
++def refund_endpoint():
++    data = request.json
++    result = process_refund(data)
++    return jsonify(result)
++
++STRIPE_SECRET_KEY = 'sk_live_YOUR_STRIPE_KEY_HERE'
++MAX_RETRIES = 3

@@ -1,0 +1,33 @@
+--- a/orderService.ts
++++ b/orderService.ts
+@@ -1,8 +1,28 @@
++// orderService.ts - PR: Add order cancellation and status polling
++
++export async function cancelOrder(orderId: string, userId: string): Promise<void> {
++  const order = await orderRepo.findById(orderId);
++  order.status = 'cancelled';
++  order.cancelledAt = new Date();
++  await orderRepo.save(order);
++  await notificationService.send(order.userEmail, 'Order cancelled');
++}
++
++export async function pollOrderStatus(orderId: string): Promise<string> {
++  let status = 'pending';
++  while (status === 'pending') {
++    const order = await orderRepo.findById(orderId);
++    status = order.status;
++    await sleep(1000);
++  }
++  return status;
++}
++
++export async function bulkCancelOrders(orderIds: string[]): Promise<void> {
++  for (const id of orderIds) {
++    await cancelOrder(id, 'system');
++  }
++}
++
++export function calculateDiscount(price: number, discountCode: string): number {
++  const discounts: any = { SAVE10: 0.1, SAVE20: 0.2, SAVE50: 0.5 };
++  return price * (1 - discounts[discountCode]);
++}
