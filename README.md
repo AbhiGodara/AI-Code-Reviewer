@@ -113,7 +113,7 @@ know whether a loop body actually contains the IO it's accused of.
 
 ## Note on AI assistance
 
-This was built with significant AI help (Claude): scaffolding the FastAPI and
+This was built with significant AI help with human review: scaffolding the FastAPI and
 LangGraph structure, drafting the agent prompts, and most of all designing and
 testing the deterministic merge core. Every prompt and merge rule was then
 checked against the three sample diffs and the test suite and tuned from the
