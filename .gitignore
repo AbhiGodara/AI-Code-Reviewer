@@ -1,0 +1,16 @@
+# Secrets — never commit the real key
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Confidential assignment brief — must not be published to a public repo
+*.docx
+
+# NOTE: reviews/*.json are required submission deliverables and ARE committed
+# (they were previously ignored here, which would have shipped an empty /reviews).
